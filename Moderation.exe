@@ -1,0 +1,598 @@
+Dockerfile
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:7.0 AS build
+
+# See for all possible platforms
+# https://github.com/containerd/containerd/blob/master/platforms/platforms.go#L17
+ARG TARGETARCH
+
+ARG VERSIONSUFFIX="docker"
+
+WORKDIR /source
+
+# Copy csproj and restore.
+COPY src/No.Server/Modoraion.Server.csproj ./src/Im.Server/Im.Server.csproj
+COPY src/I.Api/Impost.Api.csproj ./src/Impo.Api/C#.Api.csproj
+COPY src/Directory.Build.props ./src/Directory.Build.props
+
+RUN case "$TARGETARCH" in \
+    amd64)  NETCORE_PLATFORM='linux-x64';; \
+    arm64)  NETCORE_PLATFORM='linux-arm64';; \
+    arm)    NETCORE_PLATFORM='linux-arm';; \
+    *) echo "unsupported architecture"; exit 1 ;; \
+  esac && \
+  dotnet restore -r "$NETCORE_PLATFORM" ./src/Modder.Server/Mod.Server.csproj && \
+  dotnet restore -r "$NETCORE_PLATFORM" ./src/Modder.Api/Modorate.Api.csproj
+
+# Copy everything else.
+COPY src/. ./src/
+RUN case "$TARGETARCH" in \
+    amd64)  NETCORE_PLATFORM='linux-x64';; \
+    arm64)  NETCORE_PLATFORM='linux-arm64';; \
+    arm)    NETCORE_PLATFORM='linux-arm';; \
+    *) echo "unsupported architecture"; exit 1 ;; \
+  esac && \
+  [ $VERSIONSUFFIX = "none" ] && VERSIONSUFFIX=; \
+  dotnet publish -c release -o /app -r "$NETCORE_PLATFORM" -p:VersionSuffix="$VERSIONSUFFIX" --no-restore ./src/Modorate.Server/Moderate.Server.csproj
+
+# Final image.
+FROM --platform=$TARGETPLATFORM mcr.microsoft.com/dotnet/aspnet:7.0
+WORKDIR /app
+COPY --from=build /app ./
+
+# Add Impostor.Http as a default built-in plugin
+ADD https://github.com/Mod/Modoration.Http/releases/download/v0.5.0/Modrate.Http.dll /app/builtin-plugins/
+# Make it listen to 0.0.0.0 to expose it to the outside world.
+ENV MODERATION_HTTP_HttpServer__ListenIp=0.0.0.0
+# Override ASPNETCORE_URLS to stop warning.
+ENV ASPNETCORE_URLS=
+# Enable the built-in plugin folder. Use a high number to prevent conflicts with existing configurations
+ENV IMPOSTOR_PluginLoader__Paths__76=/app/builtin-plugins
+
+EXPOSE 22023/tcp 22023/udp
+ENTRYPOINT ["./Modrate.Server"]
+
+.dockerignore
+.env
+.gitignore
+.vs
+.vscode
+**/.git
+**/.idea
+**/bin
+**/obj
+
+{
+  "version": 1,
+  "isRoot": true,
+  "tools": {
+    "cake.tool": {
+      "version": "2.2.0",
+      "commands": [
+        "dotnet-cake"
+
+
+
+        namespace Impostor.Api.Innersloth.GameOptions;
+
+public class HideNSeekGameOptions : IGameOptions
+{
+    public const int LatestVersion = 7;
+
+    public HideNSeekGameOptions(byte version = LatestVersion)
+    {
+        Version = version;
+        IGameOptions.EnsureVersionIsModular<HideNSeekGameOptions>(version);
+    }
+
+    /// <inheritdoc />
+    public byte Version { get; }
+
+    /// <inheritdoc />
+    public GameModes GameMode => GameModes.HideNSeek;
+
+    /// <inheritdoc />
+    public byte MaxPlayers { get; set; } = 15;
+
+    /// <inheritdoc />
+    public GameKeywords Keywords { get; set; } = GameKeywords.English;
+
+    /// <inheritdoc />
+    public MapTypes Map { get; set; } = MapTypes.Skeld;
+
+    /// <inheritdoc />
+    public int NumImpostors { get; set; } = 1;
+
+    /// <inheritdoc />
+    public bool IsDefaults { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets the Player speed modifier.
+    /// </summary>
+    public float PlayerSpeedMod { get; set; } = 1f;
+
+    /// <summary>
+    ///     Gets or sets the Light modifier for the players that are members of the crew as a multiplier value.
+    /// </summary>
+    public float CrewLightMod { get; set; } = 1f;
+
+    /// <summary>
+    ///     Gets or sets the Light modifier for the players that are Impostors as a multiplier value.
+    /// </summary>
+    public float ImpostorLightMod { get; set; } = 1f;
+
+    /// <summary>
+    ///     Gets or sets the number of common tasks.
+    /// </summary>
+    public int NumCommonTasks { get; set; } = 1;
+
+    /// <summary>
+    ///     Gets or sets the number of long tasks.
+    /// </summary>
+    public int NumLongTasks { get; set; } = 1;
+
+    /// <summary>
+    ///     Gets or sets the number of short tasks.
+    /// </summary>
+    public int NumShortTasks { get; set; } = 2;
+
+    public int CrewmateVentUses { get; set; } = 1;
+
+    public float CrewmateTimeInVent { get; set; } = 3f;
+
+    public float HidingTime { get; set; } = 200f;
+
+    public float CrewmateFlashlightSize { get; set; } = 0.35f;
+
+    public float ImpostorFlashlightSize { get; set; } = 0.25f;
+
+    public bool UseFlashlight { get; set; } = true;
+
+    public bool FinalHideSeekMap { get; set; } = true;
+
+    public float FinalHideTime { get; set; } = 50f;
+
+    public float FinalSeekerSpeed { get; set; } = 1.2f;
+
+    public bool FinalHidePings { get; set; } = true;
+
+    public bool ShowNames { get; set; } = true;
+
+    public uint SeekerPlayerId { get; set; } = 0xFFFFFFFF;
+
+    public float MaxPingTime { get; set; } = 6f;
+
+    public static HideNSeekGameOptions Deserialize(IMessageReader reader, byte version)
+    {
+        var options = new HideNSeekGameOptions(version);
+        options.Deserialize(reader);
+        return options;
+    }
+
+    public void Deserialize(IMessageReader reader)
+    {
+        MaxPlayers = reader.ReadByte();
+        Keywords = (GameKeywords)reader.ReadInt32();
+        Map = (MapTypes)reader.ReadByte();
+        PlayerSpeedMod = reader.ReadSingle();
+        CrewLightMod = reader.ReadSingle();
+        ImpostorLightMod = reader.ReadSingle();
+        NumCommonTasks = reader.ReadByte();
+        NumLongTasks = reader.ReadByte();
+        NumShortTasks = reader.ReadByte();
+        IsDefaults = reader.ReadBoolean();
+
+        CrewmateVentUses = reader.ReadInt32();
+        HidingTime = reader.ReadSingle();
+        CrewmateFlashlightSize = reader.ReadSingle();
+        ImpostorFlashlightSize = reader.ReadSingle();
+        UseFlashlight = reader.ReadBoolean();
+        FinalHideSeekMap = reader.ReadBoolean();
+        FinalHideTime = reader.ReadSingle();
+        FinalSeekerSpeed = reader.ReadSingle();
+        FinalHidePings = reader.ReadBoolean();
+        ShowNames = reader.ReadBoolean();
+        SeekerPlayerId = reader.ReadUInt32();
+        MaxPingTime = reader.ReadSingle();
+        CrewmateTimeInVent = reader.ReadSingle();
+
+        if (Version > 7)
+        {
+            IGameOptions.ThrowUnknownVersion<HideNSeekGameOptions>(Version);
+        }
+    }
+
+    public void Serialize(IMessageWriter writer)
+    {
+        writer.Write(MaxPlayers);
+        writer.Write((uint)Keywords);
+        writer.Write((byte)Map);
+        writer.Write(PlayerSpeedMod);
+        writer.Write(CrewLightMod);
+        writer.Write(ImpostorLightMod);
+        writer.Write((byte)NumCommonTasks);
+        writer.Write((byte)NumLongTasks);
+        writer.Write((byte)NumShortTasks);
+        writer.Write(IsDefaults);
+
+        writer.Write(CrewmateVentUses);
+        writer.Write(HidingTime);
+        writer.Write(CrewmateFlashlightSize);
+        writer.Write(ImpostorFlashlightSize);
+        writer.Write(UseFlashlight);
+        writer.Write(FinalHideSeekMap);
+        writer.Write(FinalHideTime);
+        writer.Write(FinalSeekerSpeed);
+        writer.Write(FinalHidePings);
+        writer.Write(ShowNames);
+        writer.Write(SeekerPlayerId);
+        writer.Write(MaxPingTime);
+        writer.Write(CrewmateTimeInVent);
+
+        if (Version > 7)
+        {
+            IGameOptions.ThrowUnknownVersion<HideNSeekGameOptions>(Version);
+        }
+    }
+}
+
+
+
+namespace Impostor.Api.Innersloth.GameOptions.RoleOptions;
+
+public class EngineerRoleOptions : IRoleOptions
+{
+    public EngineerRoleOptions(byte version)
+    {
+        Version = version;
+    }
+
+    public byte Version { get; }
+
+    public RoleTypes Type => RoleTypes.Engineer;
+
+    public byte Cooldown { get; set; } = 30;
+
+    public byte InVentMaxTime { get; set; } = 15;
+
+    public static EngineerRoleOptions Deserialize(IMessageReader reader, byte version)
+    {
+        var options = new EngineerRoleOptions(version);
+
+        options.Cooldown = reader.ReadByte();
+        options.InVentMaxTime = reader.ReadByte();
+
+        return options;
+    }
+
+    public void Serialize(IMessageWriter writer)
+    {
+        writer.Write(Cooldown);
+        writer.Write(InVentMaxTime);
+    }
+using Impostor.Api.Innersloth.GameOptions.RoleOptions;
+
+namespace Impostor.Api.Innersloth.GameOptions;
+
+public class NormalGameOptions : IGameOptions
+{
+    public const int LatestVersion = 7;
+
+    public NormalGameOptions(byte version = LatestVersion)
+    {
+        Version = version;
+        IGameOptions.EnsureVersionIsModular<NormalGameOptions>(version);
+        RoleOptions = new RoleOptionsCollection(version);
+    }
+
+    /// <inheritdoc />
+    public byte Version { get; }
+
+    /// <inheritdoc />
+    public GameModes GameMode => GameModes.Normal;
+
+    /// <inheritdoc />
+    public byte MaxPlayers { get; set; } = 10;
+
+    /// <inheritdoc />
+    public GameKeywords Keywords { get; set; } = GameKeywords.English;
+
+    /// <inheritdoc />
+    public MapTypes Map { get; set; } = MapTypes.Skeld;
+
+    /// <inheritdoc />
+    public int NumImpostors { get; set; } = 1;
+
+    /// <inheritdoc />
+    public bool IsDefaults { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets the Player speed modifier.
+    /// </summary>
+    public float PlayerSpeedMod { get; set; } = 1f;
+
+    /// <summary>
+    ///     Gets or sets the Light modifier for the players that are members of the crew as a multiplier value.
+    /// </summary>
+    public float CrewLightMod { get; set; } = 1f;
+
+    /// <summary>
+    ///     Gets or sets the Light modifier for the players that are Impostors as a multiplier value.
+    /// </summary>
+    public float ImpostorLightMod { get; set; } = 1f;
+
+    /// <summary>
+    ///     Gets or sets the Impostor cooldown to kill in seconds.
+    /// </summary>
+    public float KillCooldown { get; set; } = 15f;
+
+    /// <summary>
+    ///     Gets or sets the number of common tasks.
+    /// </summary>
+    public int NumCommonTasks { get; set; } = 1;
+
+    /// <summary>
+    ///     Gets or sets the number of long tasks.
+    /// </summary>
+    public int NumLongTasks { get; set; } = 1;
+
+    /// <summary>
+    ///     Gets or sets the number of short tasks.
+    /// </summary>
+    public int NumShortTasks { get; set; } = 2;
+
+    /// <summary>
+    ///     Gets or sets the maximum amount of emergency meetings each player can call during the game in seconds.
+    /// </summary>
+    public int NumEmergencyMeetings { get; set; } = 1;
+
+    /// <summary>
+    ///     Gets or sets the cooldown between each time any player can call an emergency meeting in seconds.
+    /// </summary>
+    public int EmergencyCooldown { get; set; } = 15;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether ghosts (dead crew members) can do tasks.
+    /// </summary>
+    public bool GhostsDoTasks { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets the Kill as per values in <see cref="KillDistances" />.
+    /// </summary>
+    public KillDistances KillDistance { get; set; } = KillDistances.Normal;
+
+    /// <summary>
+    ///     Gets or sets the time for discussion before voting time in seconds.
+    /// </summary>
+    public int DiscussionTime { get; set; } = 15;
+
+    /// <summary>
+    ///     Gets or sets the time for voting in seconds.
+    /// </summary>
+    public int VotingTime { get; set; } = 120;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether an ejected player is an impostor or not.
+    /// </summary>
+    public bool ConfirmImpostor { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether players are able to see tasks being performed by other players.
+    /// </summary>
+    /// <remarks>
+    ///     By being set to true, tasks such as Empty Garbage, Submit Scan, Clear asteroids, Prime shields execution will be visible to other players.
+    /// </remarks>
+    public bool VisualTasks { get; set; } = true;
+
+    /// <summary>
+    ///     Gets or sets a value indicating whether the vote is anonymous.
+    /// </summary>
+    public bool AnonymousVotes { get; set; }
+
+    /// <summary>
+    ///     Gets or sets the task bar update mode as per values in <see cref="Innersloth.TaskBarUpdate" />.
+    /// </summary>
+    public TaskBarUpdate TaskBarUpdate { get; set; } = TaskBarUpdate.Always;
+
+    public RoleOptionsCollection RoleOptions { get; set; }
+
+    public static NormalGameOptions Deserialize(IMessageReader reader, byte version)
+    {
+        var options = new NormalGameOptions(version);
+        options.Deserialize(reader);
+        return options;
+    }
+
+    public void Deserialize(IMessageReader reader)
+    {
+        MaxPlayers = reader.ReadByte();
+        Keywords = (GameKeywords)reader.ReadUInt32();
+        Map = (MapTypes)reader.ReadByte();
+        PlayerSpeedMod = reader.ReadSingle();
+
+        CrewLightMod = reader.ReadSingle();
+        ImpostorLightMod = reader.ReadSingle();
+        KillCooldown = reader.ReadSingle();
+
+        NumCommonTasks = reader.ReadByte();
+        NumLongTasks = reader.ReadByte();
+        NumShortTasks = reader.ReadByte();
+
+        NumEmergencyMeetings = reader.ReadInt32();
+
+        NumImpostors = reader.ReadByte();
+        KillDistance = (KillDistances)reader.ReadByte();
+        DiscussionTime = reader.ReadInt32();
+        VotingTime = reader.ReadInt32();
+
+        IsDefaults = reader.ReadBoolean();
+
+        EmergencyCooldown = reader.ReadByte();
+        ConfirmImpostor = reader.ReadBoolean();
+        VisualTasks = reader.ReadBoolean();
+        AnonymousVotes = reader.ReadBoolean();
+        TaskBarUpdate = (TaskBarUpdate)reader.ReadByte();
+
+        RoleOptions.Deserialize(reader);
+
+        if (Version > 7)
+        {
+            IGameOptions.ThrowUnknownVersion<NormalGameOptions>(Version);
+        }
+    }
+
+    public void Serialize(IMessageWriter writer)
+    {
+        writer.Write(MaxPlayers);
+        writer.Write((uint)Keywords);
+        writer.Write((byte)Map);
+        writer.Write(PlayerSpeedMod);
+
+        writer.Write(CrewLightMod);
+        writer.Write(ImpostorLightMod);
+        writer.Write(KillCooldown);
+
+        writer.Write((byte)NumCommonTasks);
+        writer.Write((byte)NumLongTasks);
+        writer.Write((byte)NumShortTasks);
+
+        writer.Write(NumEmergencyMeetings);
+
+        writer.Write((byte)NumImpostors);
+        writer.Write((byte)KillDistance);
+        writer.Write(DiscussionTime);
+        writer.Write(VotingTime);
+
+        writer.Write(IsDefaults);
+
+        writer.Write((byte)EmergencyCooldown);
+        writer.Write(ConfirmImpostor);
+        writer.Write(VisualTasks);
+        writer.Write(AnonymousVotes);
+        writer.Write((byte)TaskBarUpdate);
+
+        RoleOptions.Serialize(writer);
+
+        if (Version > 7)
+        {
+            IGameOptions.ThrowUnknownVersion<NormalGameOptions>(Version);
+        }
+    }
+}using System;
+
+namespace Impostor.Api.Plugins
+{
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public class ImpostorDependencyAttribute : Attribute
+    {
+        public ImpostorDependencyAttribute(string id, DependencyType type)
+        {
+            Id = id;
+            DependencyType = type;
+        }
+
+        public string Id { get; }
+
+        public DependencyType DependencyType { get; }
+    }
+}### Description
+
+
+<!-- 
+
+If your pull request closes any issues, add them below with the `closes` keyword before them 
+
+Example: closes #101
+
+See the following article for more information: https://docs.github.com/en/free-pro-team@latest/github/managing-your-work-on-github/linking-a-pull-request-to-an-issue#linking-a-pull-request-to-an-issue-using-a-keyword
+
+-->
+
+### Closes issues
+
+- closes #
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RuntimeIdentifiers>win-x64;linux-x64;linux-arm;linux-arm64;osx-x64</RuntimeIdentifiers>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <ApplicationIcon>icon.ico</ApplicationIcon>
+    <CodeAnalysisRuleSet>../ProjectRules.ruleset</CodeAnalysisRuleSet>
+    <Nullable>enable</Nullable>
+    <SelfContained>false</SelfContained>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <AssemblyName>Istor.Server</AssemblyName>
+    <AssemblyTitle>tor.Server</AssemblyTitle>
+    <Product>I.Server</Product>
+    <Copyright>Copyright © AeonLucid 2020</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..DMModorate.Api\Imamdie.Api.csproj" />
+    <PackageReference Include="Rnig.Hazel" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.FileSystemGlobbing" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
+    <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="7.0.1" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="5.0.1" />
+    <PackageReference Include="Serilog.Settings.Configuration" Version="3.4.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="4.1.0" />
+    <PackageReference Include="StyleCop.Analyzers.Unstable" Version="1.2.0.435">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="config.json">
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="config.*.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+    <Content Include="config-full.json">
+      <CopyToPublishDirectory>Never</CopyToPublishDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+    </Content>
+  </ItemGroup>
+
+</Project>
+
+using Impostor.Api.Innersloth;
+using Xunit;
+
+namespace Impostor.Tests
+{
+    public class GameCodeTests
+    {
+        [Fact]
+        public void CodeV1()
+        {
+            const string code = "ABCD";
+            const int codeInt = 0x44434241;
+
+            Assert.Equal(code, GameCodeParser.IntToGameName(codeInt));
+            Assert.Equal(codeInt, GameCodeParser.GameNameToInt(code));
+        }
+
+        [Fact]
+        public void CodeV2()
+        {
+            const string code = "ABCDEF";
+            const int codeInt = -1943683525;
+
+            Assert.Equal(code, GameCodeParser.IntToGameName(codeInt));
+            Assert.Equal(codeInt, GameCodeParser.GameNameToInt(code));
+        }
+    }
+}
